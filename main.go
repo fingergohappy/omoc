@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"omoc/internal/config"
-	"omoc/internal/models"
 	"omoc/internal/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,13 +17,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	available, err := models.Fetch()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to fetch models (is opencode installed?): %v\n", err)
-		os.Exit(1)
-	}
-
-	m := tui.New(cfg, available)
+	m := tui.New(cfg)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

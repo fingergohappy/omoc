@@ -4,7 +4,9 @@ import (
 	"strings"
 
 	"omoc/internal/config"
+	"omoc/internal/models"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,10 +25,17 @@ type leftItem struct {
 	isHeader bool
 }
 
+type modelsLoadedMsg struct {
+	models []string
+	err    error
+}
+
 type Model struct {
 	cfg            *config.Config
 	allModels      []string
 	filteredModels []string
+	loading        bool
+	loadErr        string
 
 	focus pane
 
@@ -34,7 +43,8 @@ type Model struct {
 	leftCursor int
 	midCursor  int
 
-	filter textinput.Model
+	filter  textinput.Model
+	spinner spinner.Model
 
 	width  int
 	height int
@@ -56,10 +66,18 @@ func buildLeftItems() []leftItem {
 	return items
 }
 
-func New(cfg *config.Config, availableModels []string) Model {
+func fetchModelsCmd() tea.Msg {
+	m, err := models.Fetch()
+	return modelsLoadedMsg{models: m, err: err}
+}
+
+func New(cfg *config.Config) Model {
 	ti := textinput.New()
 	ti.Placeholder = "filter models..."
 	ti.CharLimit = 80
+
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
 
 	items := buildLeftItems()
 	cursor := 0
@@ -71,19 +89,19 @@ func New(cfg *config.Config, availableModels []string) Model {
 	}
 
 	return Model{
-		cfg:            cfg,
-		allModels:      availableModels,
-		filteredModels: availableModels,
-		leftItems:      items,
-		leftCursor:     cursor,
-		filter:         ti,
-		width:          120,
-		height:         40,
+		cfg:        cfg,
+		loading:    true,
+		leftItems:  items,
+		leftCursor: cursor,
+		filter:     ti,
+		spinner:    sp,
+		width:      120,
+		height:     40,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return tea.Batch(m.spinner.Tick, fetchModelsCmd)
 }
 
 func (m Model) currentItem() leftItem {
@@ -174,6 +192,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		return m, nil
+
+	case spinner.TickMsg:
+		if m.loading {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
+
+	case modelsLoadedMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.loadErr = msg.err.Error()
+		} else {
+			m.allModels = msg.models
+			m.filteredModels = msg.models
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -288,6 +323,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.saved = true
 				m.message = "saved!"
+			}
+
+		case "r":
+			if !m.loading {
+				m.loading = true
+				m.allModels = nil
+				m.filteredModels = nil
+				m.midCursor = 0
+				m.message = "refreshing models..."
+				return m, tea.Batch(m.spinner.Tick, fetchModelsCmd)
 			}
 		}
 	}

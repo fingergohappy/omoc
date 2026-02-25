@@ -6,6 +6,15 @@ Reads and writes `~/.config/opencode/oh-my-opencode.json`. Available models are 
 
 ## Install
 
+### Homebrew
+
+```bash
+brew tap fingergohappy/tap
+brew install omoc
+```
+
+### From source
+
 ```bash
 go install .
 ```
@@ -34,6 +43,7 @@ go build -o omoc .
 | `d` | Clear model and variant for current item |
 | `/` | Filter models (in model panel) |
 | `esc` | Clear filter |
+| `r` | Refresh model list |
 | `s` | Save config |
 | `q` | Quit |
 

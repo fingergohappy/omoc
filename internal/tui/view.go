@@ -155,6 +155,24 @@ func (m Model) viewLeft(width, height int) string {
 }
 
 func (m Model) viewMiddle(width, height int) string {
+	if m.loading {
+		loadingText := m.spinner.View() + " loading models..."
+		content := "\n\n" + lipgloss.PlaceHorizontal(width, lipgloss.Center, loadingText)
+		for i := 0; i < height-3; i++ {
+			content += "\n"
+		}
+		return normalBorder.Width(width).Height(height).Render(content)
+	}
+
+	if m.loadErr != "" {
+		errText := statusErr.Render("error: " + m.loadErr)
+		content := "\n\n" + lipgloss.PlaceHorizontal(width, lipgloss.Center, errText)
+		for i := 0; i < height-3; i++ {
+			content += "\n"
+		}
+		return normalBorder.Width(width).Height(height).Render(content)
+	}
+
 	filterLine := "  " + m.filter.View()
 	visibleHeight := height - 2
 
@@ -279,7 +297,7 @@ func (m Model) viewFooter() string {
 		}
 	}
 
-	help := helpStyle.Render("tab/h/l:switch  j/k:move  enter:select  v:variant  d:clear  /:filter  s:save  q:quit")
+	help := helpStyle.Render("tab/h/l:switch  j/k:move  enter:select  v:variant  d:clear  /:filter  r:refresh  s:save  q:quit")
 
 	return fmt.Sprintf("\n%s\n%s", status, help)
 }
