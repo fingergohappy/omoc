@@ -2,6 +2,8 @@
 
 A TUI tool for configuring [Oh My OpenCode](https://github.com/code-yeongyu/oh-my-opencode) agent and category model assignments.
 
+![preview](assets/preview.png)
+
 Reads and writes `~/.config/opencode/oh-my-opencode.json`. Available models are fetched from `opencode models`.
 
 ## Install
