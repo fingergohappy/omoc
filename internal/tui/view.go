@@ -192,7 +192,7 @@ func (m Model) viewMiddle(width, height int) string {
 		currentModel = entry.Model
 	}
 
-	sorted := m.sortModelsCurrentFirst(m.filteredModels)
+	sorted := m.displayedModels()
 
 	if len(sorted) == 0 {
 		lines = append(lines, dimStyle.Render("  no models match filter"))

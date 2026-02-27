@@ -191,7 +191,11 @@ func (m Model) currentInfo() *config.ItemInfo {
 	return nil
 }
 
-func (m *Model) sortModelsCurrentFirst(models []string) []string {
+func (m Model) displayedModels() []string {
+	return m.sortModelsCurrentFirst(m.filteredModels)
+}
+
+func (m Model) sortModelsCurrentFirst(models []string) []string {
 	current := ""
 	if entry := m.currentEntry(); entry != nil {
 		current = entry.Model
@@ -199,14 +203,22 @@ func (m *Model) sortModelsCurrentFirst(models []string) []string {
 	if current == "" {
 		return models
 	}
-	sorted := make([]string, 0, len(models))
-	for _, model := range models {
+
+	idx := -1
+	for i, model := range models {
 		if model == current {
-			sorted = append([]string{model}, sorted...)
-		} else {
-			sorted = append(sorted, model)
+			idx = i
+			break
 		}
 	}
+	if idx <= 0 {
+		return models
+	}
+
+	sorted := make([]string, 0, len(models))
+	sorted = append(sorted, current)
+	sorted = append(sorted, models[:idx]...)
+	sorted = append(sorted, models[idx+1:]...)
 	return sorted
 }
 
@@ -214,17 +226,19 @@ func (m *Model) applyFilter() {
 	q := strings.ToLower(m.filter.Value())
 	if q == "" {
 		m.filteredModels = m.allModels
-		return
-	}
-	var filtered []string
-	for _, model := range m.allModels {
-		if strings.Contains(strings.ToLower(model), q) {
-			filtered = append(filtered, model)
+	} else {
+		var filtered []string
+		for _, model := range m.allModels {
+			if strings.Contains(strings.ToLower(model), q) {
+				filtered = append(filtered, model)
+			}
 		}
+		m.filteredModels = filtered
 	}
-	m.filteredModels = filtered
-	if m.midCursor >= len(m.filteredModels) {
-		m.midCursor = max(0, len(m.filteredModels)-1)
+
+	visible := m.displayedModels()
+	if m.midCursor >= len(visible) {
+		m.midCursor = max(0, len(visible)-1)
 	}
 }
 
@@ -394,7 +408,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focus == paneLeft {
 				m.moveLeftCursor(1)
 			} else if m.focus == paneMiddle {
-				if m.midCursor < len(m.filteredModels)-1 {
+				if m.midCursor < len(m.displayedModels())-1 {
 					m.midCursor++
 				}
 			}
@@ -409,10 +423,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if m.focus == paneMiddle && len(m.filteredModels) > 0 {
+			if m.focus == paneMiddle {
 				entry := m.currentEntry()
-				if entry != nil {
-					entry.Model = m.filteredModels[m.midCursor]
+				visible := m.displayedModels()
+				if entry != nil && len(visible) > 0 && m.midCursor >= 0 && m.midCursor < len(visible) {
+					entry.Model = visible[m.midCursor]
 					m.message = "model set: " + entry.Model
 				}
 			}
