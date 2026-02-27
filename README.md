@@ -46,8 +46,19 @@ go build -o omoc .
 | `/` | Filter models (in model panel) |
 | `esc` | Clear filter |
 | `r` | Refresh model list |
+| `p` | Open profile selector (switch templates) |
+| `n` | Create new profile (when in profile selector) |
+| `a` | Activate selected profile (in selector or main screen) |
 | `s` | Save config |
 | `q` | Quit |
+
+### Profiles (Templates)
+
+You can maintain multiple configuration profiles and switch between them. This allows you to quickly swap model pairings for different tasks.
+
+Profiles are JSON files in `~/.config/opencode/`. The active configuration is a symlink from `oh-my-opencode.json` to the selected profile (e.g., `oh-my-opencode.default.json`).
+
+Press `p` to open the profile selector. Within the selector, select a profile and press `a` (or `enter`) to activate it. Press `n` to create a new profile by cloning the currently active one.
 
 ### Layout
 

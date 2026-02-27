@@ -69,7 +69,12 @@ func (m Model) View() string {
 		return "loading..."
 	}
 
+	if m.showProfiles {
+		return m.viewProfiles(m.width, m.height)
+	}
+
 	leftWidth := 40
+
 	infoWidth := 38
 	midWidth := m.width - leftWidth - infoWidth - 8
 	if midWidth < 30 {
@@ -77,7 +82,11 @@ func (m Model) View() string {
 	}
 	contentHeight := m.height - 5
 
-	header := titleStyle.Render("⚙ omoc — model configurator") + "\n"
+	active := ""
+	if m.activeProfile != "" {
+		active = " [" + displayProfileName(m.activeProfile) + "]"
+	}
+	header := titleStyle.Render("⚙ omoc — model configurator"+active) + "\n"
 	left := m.viewLeft(leftWidth, contentHeight)
 	mid := m.viewMiddle(midWidth, contentHeight)
 	right := m.viewInfo(infoWidth, contentHeight)
@@ -287,6 +296,53 @@ func (m Model) viewInfo(width, height int) string {
 	return normalBorder.Width(width).Height(height).Render(content)
 }
 
+func (m Model) viewProfiles(width, height int) string {
+	var lines []string
+
+	if m.creatingProfile {
+		lines = append(lines, titleStyle.Render("Create New Profile"))
+		lines = append(lines, "")
+		lines = append(lines, "Enter profile name:")
+		lines = append(lines, m.profileInput.View())
+		lines = append(lines, "")
+		lines = append(lines, helpStyle.Render("enter:create  esc:cancel"))
+	} else {
+		lines = append(lines, titleStyle.Render("Select Profile"))
+		lines = append(lines, "")
+
+		if len(m.profiles) == 0 {
+			lines = append(lines, dimStyle.Render("No profiles found."))
+		} else {
+			for i, p := range m.profiles {
+				cursor := "  "
+				style := dimStyle
+				if i == m.profileCursor {
+					cursor = "▸ "
+					style = selectedItem
+				}
+
+				marker := "  "
+				if p == m.activeProfile {
+					marker = "★ "
+					if i != m.profileCursor {
+						style = modelHighlight
+					}
+				}
+
+				lines = append(lines, cursor+style.Render(marker+displayProfileName(p)))
+			}
+		}
+
+		lines = append(lines, "")
+		lines = append(lines, helpStyle.Render("j/k:move  a/enter:activate  n:new  esc:close"))
+	}
+
+	content := strings.Join(lines, "\n")
+	box := focusedBorder.Width(50).Padding(1, 2).Render(content)
+
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box)
+}
+
 func (m Model) viewFooter() string {
 	status := ""
 	if m.message != "" {
@@ -297,7 +353,7 @@ func (m Model) viewFooter() string {
 		}
 	}
 
-	help := helpStyle.Render("tab/h/l:switch  j/k:move  enter:select  v:variant  d:clear  /:filter  r:refresh  s:save  q:quit")
+	help := helpStyle.Render("tab/h/l:switch  j/k:move  enter:select  v:variant  d:clear  /:filter  p:profiles  a:activate  r:refresh  s:save  q:quit")
 
 	return fmt.Sprintf("\n%s\n%s", status, help)
 }
@@ -336,4 +392,17 @@ func wrapText(s string, width int) []string {
 	}
 	lines = append(lines, current)
 	return lines
+}
+
+func displayProfileName(filename string) string {
+	const prefix = "oh-my-opencode."
+	const suffix = ".json"
+
+	if strings.HasPrefix(filename, prefix) && strings.HasSuffix(filename, suffix) {
+		name := filename[len(prefix) : len(filename)-len(suffix)]
+		if name != "" {
+			return name
+		}
+	}
+	return filename
 }

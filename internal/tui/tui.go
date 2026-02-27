@@ -30,12 +30,30 @@ type modelsLoadedMsg struct {
 	err    error
 }
 
+type profilesLoadedMsg struct {
+	profiles []string
+	err      error
+}
+
+type profileActivatedMsg struct {
+	cfg     *config.Config
+	profile string
+	err     error
+}
+
 type Model struct {
 	cfg            *config.Config
 	allModels      []string
 	filteredModels []string
 	loading        bool
 	loadErr        string
+
+	profiles        []string
+	profileCursor   int
+	showProfiles    bool
+	activeProfile   string
+	creatingProfile bool
+	profileInput    textinput.Model
 
 	focus pane
 
@@ -66,6 +84,34 @@ func buildLeftItems() []leftItem {
 	return items
 }
 
+func fetchProfilesCmd() tea.Msg {
+	p, err := config.ListProfiles()
+	return profilesLoadedMsg{profiles: p, err: err}
+}
+
+func activateProfileCmd(profile string) tea.Cmd {
+	return func() tea.Msg {
+		cfg, err := config.LoadProfile(profile)
+		if err != nil {
+			return profileActivatedMsg{profile: profile, err: err}
+		}
+		if err := cfg.Save(); err != nil {
+			return profileActivatedMsg{profile: profile, err: err}
+		}
+		return profileActivatedMsg{cfg: cfg, profile: profile}
+	}
+}
+
+func createProfileCmd(cfg *config.Config, name string) tea.Cmd {
+	return func() tea.Msg {
+		filename, err := cfg.CloneToNewProfile(name)
+		if err != nil {
+			return profileActivatedMsg{err: err}
+		}
+		return profileActivatedMsg{cfg: cfg, profile: filename}
+	}
+}
+
 func fetchModelsCmd() tea.Msg {
 	m, err := models.Fetch()
 	return modelsLoadedMsg{models: m, err: err}
@@ -75,6 +121,10 @@ func New(cfg *config.Config) Model {
 	ti := textinput.New()
 	ti.Placeholder = "filter models..."
 	ti.CharLimit = 80
+
+	pi := textinput.New()
+	pi.Placeholder = "profile name (a-z0-9_-)"
+	pi.CharLimit = 32
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -89,19 +139,21 @@ func New(cfg *config.Config) Model {
 	}
 
 	return Model{
-		cfg:        cfg,
-		loading:    true,
-		leftItems:  items,
-		leftCursor: cursor,
-		filter:     ti,
-		spinner:    sp,
-		width:      120,
-		height:     40,
+		cfg:           cfg,
+		loading:       true,
+		leftItems:     items,
+		leftCursor:    cursor,
+		filter:        ti,
+		profileInput:  pi,
+		spinner:       sp,
+		activeProfile: cfg.ActiveProfileFile,
+		width:         120,
+		height:        40,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, fetchModelsCmd)
+	return tea.Batch(m.spinner.Tick, fetchModelsCmd, fetchProfilesCmd)
 }
 
 func (m Model) currentItem() leftItem {
@@ -211,8 +263,98 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case profilesLoadedMsg:
+		if msg.err != nil {
+			m.message = "failed to load profiles: " + msg.err.Error()
+		} else {
+			m.profiles = msg.profiles
+			for i, p := range m.profiles {
+				if p == m.activeProfile {
+					m.profileCursor = i
+					break
+				}
+			}
+		}
+		return m, nil
+
+	case profileActivatedMsg:
+		if msg.err != nil {
+			m.message = "error: " + msg.err.Error()
+		} else {
+			m.cfg = msg.cfg
+			m.activeProfile = msg.profile
+			m.message = "profile activated: " + msg.profile
+			m.showProfiles = false
+			m.creatingProfile = false
+			m.profileInput.SetValue("")
+		}
+		return m, nil
+
 	case tea.KeyMsg:
+		if m.creatingProfile {
+			switch msg.String() {
+			case "enter":
+				name := strings.TrimSpace(m.profileInput.Value())
+				if name == "" {
+					m.message = "profile name required"
+					return m, nil
+				}
+				// createProfileCmd is missing
+				newProfile, err := m.cfg.CloneToNewProfile(name)
+				if err != nil {
+					m.message = "error: " + err.Error()
+					return m, nil
+				}
+				// Refresh profiles to show the new one
+				return m, tea.Batch(
+					func() tea.Msg {
+						return profileActivatedMsg{cfg: m.cfg, profile: newProfile}
+					},
+					fetchProfilesCmd,
+				)
+
+			case "esc":
+				m.creatingProfile = false
+				m.profileInput.SetValue("")
+				m.message = "cancelled"
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			m.profileInput, cmd = m.profileInput.Update(msg)
+			return m, cmd
+		}
+
+		if m.showProfiles {
+			switch msg.String() {
+			case "esc", "p":
+				m.showProfiles = false
+				return m, nil
+			case "n":
+				m.creatingProfile = true
+				m.profileInput.SetValue("")
+				m.profileInput.Focus()
+				m.message = "enter new profile name"
+				return m, nil
+			case "j", "down":
+				if m.profileCursor < len(m.profiles)-1 {
+					m.profileCursor++
+				}
+			case "k", "up":
+				if m.profileCursor > 0 {
+					m.profileCursor--
+				}
+			case "enter", "a":
+				if m.profileCursor >= 0 && m.profileCursor < len(m.profiles) {
+					p := m.profiles[m.profileCursor]
+					return m, activateProfileCmd(p)
+				}
+			}
+			return m, nil
+		}
+
 		if m.focus == paneMiddle && m.filter.Focused() {
+
 			if msg.String() == "enter" || msg.String() == "esc" {
 				m.filter.Blur()
 				return m, nil
@@ -334,6 +476,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = "refreshing models..."
 				return m, tea.Batch(m.spinner.Tick, fetchModelsCmd)
 			}
+
+		case "p":
+			m.showProfiles = true
+			return m, fetchProfilesCmd
+
+		case "a":
+			if len(m.profiles) == 0 {
+				m.message = "no profiles available"
+				return m, nil
+			}
+			if m.profileCursor >= 0 && m.profileCursor < len(m.profiles) {
+				p := m.profiles[m.profileCursor]
+				return m, activateProfileCmd(p)
+			}
+			m.message = "invalid profile selection"
+			return m, nil
 		}
 	}
 
