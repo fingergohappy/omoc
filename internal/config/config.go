@@ -3,12 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 )
 
 const (
@@ -503,10 +501,6 @@ func (c *Config) Save() error {
 		return fmt.Errorf("mkdir config dir: %w", err)
 	}
 
-	if err := backupFile(cfgPath); err != nil {
-		return fmt.Errorf("backup: %w", err)
-	}
-
 	if c.raw == nil {
 		c.raw = make(map[string]json.RawMessage)
 	}
@@ -539,25 +533,4 @@ func (c *Config) Save() error {
 
 	c.ActiveProfileFile = activeProfileFile
 	return nil
-}
-
-func backupFile(path string) error {
-	src, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	defer src.Close()
-
-	backupPath := path + "." + time.Now().Format("20060102-150405") + ".bak"
-	dst, err := os.Create(backupPath)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, src)
-	return err
 }

@@ -66,7 +66,7 @@ Press `p` to open the profile selector. Within the selector, select a profile an
 - Middle panel: available models (current model pinned to top with ★; selection always matches the displayed order)
 - Right panel: description, fallback chain, and notes from the [agent-model matching guide](https://github.com/code-yeongyu/oh-my-opencode/blob/dev/docs/guide/agent-model-matching.md)
 
-A timestamped backup is created before each save.
+No backups are created on save.
 
 ## Requirements
 
