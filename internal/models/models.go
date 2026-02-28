@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Fetch runs `opencode models` and returns the sorted list of available models.
+// Fetch 执行 `opencode models` 并返回排序后的可用模型列表。
 func Fetch() ([]string, error) {
 	out, err := exec.Command("opencode", "models").Output()
 	if err != nil {

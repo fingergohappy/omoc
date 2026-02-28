@@ -19,14 +19,14 @@ const (
 	profileFileSuffix = ".json"
 )
 
-// AgentEntry represents an agent or category model configuration.
+// AgentEntry 表示 agent 或 category 的模型配置。
 type AgentEntry struct {
 	Model   string `json:"model,omitempty"`
 	Variant string `json:"variant,omitempty"`
 }
 
-// Config represents the oh-my-opencode.json structure.
-// We use a raw map to preserve unknown fields on save.
+// Config 表示 oh-my-opencode.json 的结构。
+// 使用 raw map 以便在保存时保留未知字段。
 type Config struct {
 	raw                map[string]json.RawMessage
 	Agents             map[string]*AgentEntry
@@ -35,7 +35,7 @@ type Config struct {
 	ProfileLoadWarning string
 }
 
-// KnownAgents is the ordered list of agent names from the schema.
+// KnownAgents 是 schema 中按顺序定义的 agent 名称列表。
 var KnownAgents = []string{
 	"sisyphus",
 	"prometheus",
@@ -48,7 +48,7 @@ var KnownAgents = []string{
 	"multimodal-looker",
 }
 
-// KnownCategories is the ordered list of task categories.
+// KnownCategories 是任务分类的有序列表。
 var KnownCategories = []string{
 	"visual-engineering",
 	"ultrabrain",
@@ -60,7 +60,7 @@ var KnownCategories = []string{
 	"writing",
 }
 
-// KnownVariants lists the valid variant values.
+// KnownVariants 列出所有合法的 variant 值。
 var KnownVariants = []string{"", "low", "high", "xhigh", "max"}
 
 func configFilePath() string {
@@ -141,7 +141,7 @@ func profileFileNameForName(name string) (string, error) {
 	return fileName, nil
 }
 
-// ListProfiles returns discovered profile filenames in deterministic order.
+// ListProfiles 以确定性顺序返回已发现的 profile 文件名。
 func ListProfiles() ([]string, error) {
 	entries, err := os.ReadDir(configDirPath())
 	if err != nil {
@@ -186,7 +186,7 @@ func ListProfiles() ([]string, error) {
 	return profiles, nil
 }
 
-// LoadProfile reads and parses a specific profile file.
+// LoadProfile 读取并解析指定的 profile 文件。
 func LoadProfile(filename string) (*Config, error) {
 	path, err := profilePathFor(filename)
 	if err != nil {
@@ -200,7 +200,7 @@ func LoadProfile(filename string) (*Config, error) {
 	return cfg, nil
 }
 
-// Load reads and parses the config file.
+// Load 读取并解析配置文件。
 func Load() (*Config, error) {
 	warnings := make([]string, 0, 2)
 
@@ -338,12 +338,12 @@ func (c *Config) activeProfileFileOrLegacy() string {
 	return activeProfileFile
 }
 
-// ActiveProfilePath returns the absolute path for the active profile file.
+// ActiveProfilePath 返回当前激活 profile 文件的绝对路径。
 func (c *Config) ActiveProfilePath() (string, error) {
 	return profilePathFor(c.activeProfileFileOrLegacy())
 }
 
-// CloneToNewProfile creates a new profile file by cloning the current config and makes it active.
+// CloneToNewProfile 通过克隆当前配置创建新 profile 文件，并将其设为激活状态。
 func (c *Config) CloneToNewProfile(profileName string) (string, error) {
 	newProfileFile, err := profileFileNameForName(profileName)
 	if err != nil {
@@ -481,7 +481,7 @@ func resolveActiveProfileFile() (string, error) {
 	return "", nil
 }
 
-// Save creates a backup then writes the config back to disk, preserving unknown fields.
+// Save 先创建备份，再将配置写回磁盘，同时保留未知字段。
 func (c *Config) Save() error {
 	activeProfileFile := c.activeProfileFileOrLegacy()
 	if !isValidProfileFileName(activeProfileFile) {

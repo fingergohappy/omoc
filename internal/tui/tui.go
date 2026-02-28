@@ -313,13 +313,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.message = "profile name required"
 					return m, nil
 				}
-				// createProfileCmd is missing
+				// 当前未使用 createProfileCmd
 				newProfile, err := m.cfg.CloneToNewProfile(name)
 				if err != nil {
 					m.message = "error: " + err.Error()
 					return m, nil
 				}
-				// Refresh profiles to show the new one
+				// 刷新 profile 列表以显示新创建项
 				return m, tea.Batch(
 					func() tea.Msg {
 						return profileActivatedMsg{cfg: m.cfg, profile: newProfile}
