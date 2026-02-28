@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -151,10 +152,9 @@ func ListProfiles() ([]string, error) {
 		return nil, fmt.Errorf("read config dir: %w", err)
 	}
 
-	present := map[string]bool{
-		DefaultProfileFile: false,
-		TestProfileFile:    false,
-	}
+	hasDefault := false
+	hasTest := false
+	others := make([]string, 0, len(entries))
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -165,21 +165,28 @@ func ListProfiles() ([]string, error) {
 		if name == ActiveProfileLinkFile {
 			continue
 		}
-		if name != DefaultProfileFile && name != TestProfileFile {
-			continue
-		}
 		if !isValidProfileFileName(name) {
 			continue
 		}
 
-		present[name] = true
+		switch name {
+		case DefaultProfileFile:
+			hasDefault = true
+		case TestProfileFile:
+			hasTest = true
+		default:
+			others = append(others, name)
+		}
 	}
 
-	profiles := make([]string, 0, 2)
-	if present[DefaultProfileFile] {
+	sort.Strings(others)
+
+	profiles := make([]string, 0, 2+len(others))
+	if hasDefault {
 		profiles = append(profiles, DefaultProfileFile)
 	}
-	if present[TestProfileFile] {
+	profiles = append(profiles, others...)
+	if hasTest {
 		profiles = append(profiles, TestProfileFile)
 	}
 
